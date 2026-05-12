@@ -1,14 +1,9 @@
-/* App-local styles. Mesh chrome (settings drawer, self-ref bar) is provided by
- * @baditaflorin/mesh-common/styles.css imported in main.tsx. */
-
 :root {
   color-scheme: dark;
 }
-
 * {
   box-sizing: border-box;
 }
-
 html,
 body,
 #root {
@@ -22,30 +17,155 @@ body,
   -webkit-tap-highlight-color: transparent;
 }
 
-.feature-placeholder {
-  padding: 6rem 1.5rem 2rem;
-  text-align: center;
+.dw-screen {
+  padding: 4rem 1rem 5rem;
+  max-width: 32rem;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
 }
-
-.feature-placeholder h1 {
-  font-size: 1.6rem;
+.dw-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.dw-header h1 {
   margin: 0;
   color: var(--mesh-accent);
+  font-size: 1.5rem;
 }
-
-.feature-placeholder p {
-  max-width: 32rem;
+.dw-name {
+  width: min(260px, 90%);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--mesh-fg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  text-align: center;
+}
+.dw-status {
   margin: 0;
-  opacity: 0.85;
-  line-height: 1.5;
+  font-size: 0.78rem;
+  color: var(--mesh-muted);
 }
 
-.feature-status {
+.dw-options {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.dw-options li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+}
+.dw-options li button {
+  background: transparent;
+  border: none;
+  color: var(--mesh-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0 0.4rem;
+}
+.dw-seed-tag {
+  color: var(--mesh-muted);
+  font-size: 0.7rem;
+  margin-left: 0.4rem;
+  opacity: 0.7;
+}
+
+.dw-add {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+.dw-add input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--mesh-fg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+}
+.dw-add button {
+  background: var(--mesh-accent);
+  color: #0b0a06;
+  border: none;
+  border-radius: 8px;
+  padding: 0 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dw-spin {
+  background: var(--mesh-accent);
+  color: #0b0a06;
+  border: none;
+  border-radius: 999px;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 50px color-mix(in srgb, var(--mesh-accent) 50%, transparent);
+}
+.dw-spin:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.dw-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+.dw-card p {
+  margin: 0;
+}
+.dw-help {
+  color: var(--mesh-muted);
   font-size: 0.85rem;
-  opacity: 0.6;
-  font-variant-numeric: tabular-nums;
+}
+.dw-card button {
+  background: var(--mesh-accent);
+  color: #0b0a06;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dw-card button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dw-result-tag {
+  font-size: 0.85rem;
+  color: var(--mesh-muted);
+  letter-spacing: 0.1em;
+}
+.dw-result-big {
+  font-size: clamp(1.6rem, 6vw, 2.2rem);
+  font-weight: 700;
+  color: var(--mesh-accent);
 }
