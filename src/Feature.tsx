@@ -3,6 +3,7 @@ import {
   combineSalts,
   commit,
   randomSalt,
+  usePerPeerValue,
   verifyReveal,
   type MeshConfig,
   type YRoom,
@@ -12,6 +13,8 @@ type Props = { room: YRoom | null; config: MeshConfig };
 
 type Phase = "idle" | "commit" | "reveal" | "done";
 type Player = { id: string; name: string };
+type Commitment = { hash: string };
+type Reveal = { salt: string };
 
 const NAME_KEY = (prefix: string) => `${prefix}:displayName`;
 
@@ -46,15 +49,16 @@ function Body({ room, config }: { room: YRoom; config: MeshConfig }) {
   const [result, setResult] = useState<{ idx: number; option: string } | null>(null);
   const saltRef = useRef("");
 
+  const playersMap = usePerPeerValue<Player>(room, "players", { id: "", name: "" });
+  const commitsMap = usePerPeerValue<Commitment>(room, "commits", { hash: "" });
+  const revealsMap = usePerPeerValue<Reveal>(room, "reveals", { salt: "" });
+
   useEffect(() => {
     if (name) localStorage.setItem(NAME_KEY(config.storagePrefix), name);
   }, [name, config.storagePrefix]);
 
   useEffect(() => {
-    const yPlayers = room.doc.getMap<Player>("players");
     const yOptions = room.doc.getArray<string>("options");
-    const yCommits = room.doc.getMap<{ hash: string }>("commits");
-    const yReveals = room.doc.getMap<{ salt: string }>("reveals");
     const yPhase = room.doc.getMap<{ phase: Phase }>("phase");
 
     // Seeds are rendered as a base layer (see `displayed` below) rather than
@@ -63,75 +67,71 @@ function Body({ room, config }: { room: YRoom; config: MeshConfig }) {
     // list, which every peer computes identically.
 
     const onChange = () => rerender((n) => n + 1);
-    yPlayers.observe(onChange);
     yOptions.observe(onChange);
-    yCommits.observe(onChange);
-    yReveals.observe(onChange);
     yPhase.observe(onChange);
     return () => {
-      yPlayers.unobserve(onChange);
       yOptions.unobserve(onChange);
-      yCommits.unobserve(onChange);
-      yReveals.unobserve(onChange);
       yPhase.unobserve(onChange);
     };
   }, [room]);
 
   useEffect(() => {
     const myName = name.trim() || `peer-${room.peerId.slice(0, 4)}`;
-    room.doc.getMap<Player>("players").set(room.peerId, { id: room.peerId, name: myName });
+    playersMap.setMy({ id: room.peerId, name: myName });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, name]);
 
-  const yPlayers = room.doc.getMap<Player>("players");
   const yOptions = room.doc.getArray<string>("options");
-  const yCommits = room.doc.getMap<{ hash: string }>("commits");
-  const yReveals = room.doc.getMap<{ salt: string }>("reveals");
   const yPhase = room.doc.getMap<{ phase: Phase }>("phase");
   const phase: Phase = yPhase.get("current")?.phase ?? "idle";
 
-  const players: Player[] = [];
-  yPlayers.forEach((p) => players.push(p));
-  players.sort((a, b) => a.id.localeCompare(b.id));
+  const players: Player[] = playersMap.entries
+    .map(([, p]) => p)
+    .filter((p) => p && p.id)
+    .sort((a, b) => a.id.localeCompare(b.id));
   const userAdded = yOptions.toArray();
   // Every peer renders the same merged list (no race-prone Yjs seeding).
   const options = [...SEED_DARES, ...userAdded];
 
   useEffect(() => {
     if (phase !== "commit") return;
-    if (yCommits.has(room.peerId)) return;
+    if (commitsMap.valueOf(room.peerId) !== undefined) return;
     const salt = randomSalt();
     saltRef.current = salt;
-    void commit("", salt).then(({ hash }) => yCommits.set(room.peerId, { hash }));
-  }, [phase, room.peerId, yCommits]);
+    void commit("", salt).then(({ hash }) => commitsMap.setMy({ hash }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, room.peerId]);
 
   useEffect(() => {
     if (phase !== "reveal") return;
-    if (yReveals.has(room.peerId)) return;
+    if (revealsMap.valueOf(room.peerId) !== undefined) return;
     if (!saltRef.current) return;
-    yReveals.set(room.peerId, { salt: saltRef.current });
-  }, [phase, room.peerId, yReveals]);
+    revealsMap.setMy({ salt: saltRef.current });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, room.peerId]);
 
   useEffect(() => {
     if (phase !== "reveal" && phase !== "done") return;
     if (players.length === 0 || options.length === 0) return;
-    if (!players.every((p) => yReveals.has(p.id))) return;
-    if (!players.every((p) => yCommits.has(p.id))) return;
+    if (!players.every((p) => revealsMap.valueOf(p.id) !== undefined)) return;
+    if (!players.every((p) => commitsMap.valueOf(p.id) !== undefined)) return;
     void (async () => {
       for (const p of players) {
-        const c = yCommits.get(p.id)?.hash ?? "";
-        const r = yReveals.get(p.id)?.salt ?? "";
+        const c = commitsMap.valueOf(p.id)?.hash ?? "";
+        const r = revealsMap.valueOf(p.id)?.salt ?? "";
         if (!(await verifyReveal(c, { salt: r, payload: "" }))) {
           console.error(`[dare-wheel] bad commit from ${p.id}`);
           return;
         }
       }
-      const salts = players.map((p) => yReveals.get(p.id)!.salt);
+      const salts = players.map((p) => revealsMap.valueOf(p.id)!.salt);
       const seed = combineSalts(salts);
       const idx = Math.floor(seed * options.length) % options.length;
       const option = options[idx] ?? "";
       setResult({ idx, option });
       if (phase === "reveal") yPhase.set("current", { phase: "done" });
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, players.length, options.length]);
 
   const addOption = () => {
@@ -145,20 +145,21 @@ function Body({ room, config }: { room: YRoom; config: MeshConfig }) {
   const spin = () => {
     if (players.length < 1 || options.length < 2) return;
     room.doc.transact(() => {
-      yCommits.clear();
-      yReveals.clear();
+      room.doc.getMap<Commitment>("commits").clear();
+      room.doc.getMap<Reveal>("reveals").clear();
       yPhase.set("current", { phase: "commit" });
     });
     setResult(null);
   };
 
-  const allCommitted = players.length > 0 && players.every((p) => yCommits.has(p.id));
+  const allCommitted =
+    players.length > 0 && players.every((p) => commitsMap.valueOf(p.id) !== undefined);
   const advance = () => yPhase.set("current", { phase: "reveal" });
 
   const reset = () => {
     room.doc.transact(() => {
-      yCommits.clear();
-      yReveals.clear();
+      room.doc.getMap<Commitment>("commits").clear();
+      room.doc.getMap<Reveal>("reveals").clear();
       yPhase.set("current", { phase: "idle" });
     });
     setResult(null);
@@ -228,7 +229,7 @@ function Body({ room, config }: { room: YRoom; config: MeshConfig }) {
         <div className="dw-card">
           <p>committing entropy…</p>
           <p className="dw-help">
-            {yCommits.size}/{players.length} sealed
+            {commitsMap.size}/{players.length} sealed
           </p>
           <button type="button" disabled={!allCommitted} onClick={advance}>
             all sealed → reveal
@@ -240,7 +241,7 @@ function Body({ room, config }: { room: YRoom; config: MeshConfig }) {
         <div className="dw-card">
           <p>revealing…</p>
           <p className="dw-help">
-            {yReveals.size}/{players.length} revealed
+            {revealsMap.size}/{players.length} revealed
           </p>
         </div>
       )}
