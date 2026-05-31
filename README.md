@@ -1,7 +1,7 @@
 # mesh-dare-wheel
 
 [![pages](https://img.shields.io/badge/live-baditaflorin.github.io%2Fmesh-dare-wheel-ffa45e)](https://baditaflorin.github.io/mesh-dare-wheel/)
-[![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/baditaflorin/mesh-dare-wheel/blob/main/package.json)
+[![version](https://img.shields.io/badge/version-0.1.1-blue)](https://github.com/baditaflorin/mesh-dare-wheel/blob/main/package.json)
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
 > Fair group wheel-spin via commit-reveal — everyone sees the same result, no one can rig it
